@@ -14,7 +14,7 @@ public abstract partial class ModbusClient
     /// Gets the connection status of the underlying client.
     /// </summary>
     public abstract bool IsConnected { get; }
-    
+
     protected private bool SwapBytes { get; set; }
 
     #endregion
@@ -147,7 +147,7 @@ public abstract partial class ModbusClient
         var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadHoldingRegisters, writer =>
         {
             writer.Write((byte)ModbusFunctionCode.ReadHoldingRegisters);              // 07     Function Code
-            
+
             if (BitConverter.IsLittleEndian)
             {
                 writer.WriteReverse(startingAddress);                                 // 08-09  Starting Address
@@ -383,7 +383,7 @@ public abstract partial class ModbusClient
         if (SwapBytes)
             value = ModbusUtils.SwitchEndianness(value);
 
-        WriteSingleRegister(unitIdentifier_converted, registerAddress_converted, MemoryMarshal.Cast<short, byte>(new [] { value }).ToArray());
+        WriteSingleRegister(unitIdentifier_converted, registerAddress_converted, MemoryMarshal.Cast<short, byte>(new[] { value }).ToArray());
     }
 
     /// <summary>
@@ -471,10 +471,19 @@ public abstract partial class ModbusClient
     /// <summary>
     /// This methdod is not implemented.
     /// </summary>
-    [Obsolete("This method is not implemented.")]
-    public void ReadFileRecord()
+    public Span<byte> ReadFileRecord(byte unitIdentifier, ushort fileNumber, ushort recordNumber, ushort recordLength)
     {
-        throw new NotImplementedException();
+        var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
+        {
+            writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
+            writer.Write((byte)0x07);
+            writer.Write((byte)0x06);           // Reference type
+
+            writer.Write(fileNumber);
+            writer.Write(recordNumber);
+            writer.Write(recordLength);
+        });
+        return buffer.Slice(2);
     }
 
     /// <summary>
@@ -560,7 +569,7 @@ public abstract partial class ModbusClient
                 writer.Write(writeStartingAddress);                                 // 12-13  Read Starting Address
                 writer.Write((ushort)writeQuantity);                                // 14-15  Quantity to Write
             }
-            
+
             writer.Write((byte)(writeQuantity * 2));                                // 16     Byte Count = Quantity to Write * 2
 
             writer.Write(dataset, 0, dataset.Length);
