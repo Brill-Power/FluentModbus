@@ -476,13 +476,21 @@ public abstract partial class ModbusClient
         var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
         {
             writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
-            writer.Write(ConvertUshort(address));
             writer.Write((byte)0x07);
-            writer.Write((byte)0x06);           // Reference type
+            writer.Write((byte)0x06);
+            if (BitConverter.IsLittleEndian)
+            {
+                writer.WriteReverse(fileNumber);
+                writer.WriteReverse(recordNumber);
+                writer.WriteReverse(recordLength);
+            }
+            else
+            {
+                writer.Write(fileNumber);
+                writer.Write(recordNumber);
+                writer.Write(recordLength);
+            }
 
-            writer.Write(fileNumber);
-            writer.Write(recordNumber);
-            writer.Write(recordLength);
         });
         return buffer.Slice(2);
     }
