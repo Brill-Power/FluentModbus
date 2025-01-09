@@ -470,12 +470,13 @@ public abstract partial class ModbusClient
 
     /// <summary>
     /// This methdod is not implemented.
-    /// </summary>
-    public Span<byte> ReadFileRecord(byte unitIdentifier, ushort fileNumber, ushort recordNumber, ushort recordLength)
+    /// </summary> 
+    public Span<byte> ReadFileRecord(byte unitIdentifier, int address, ushort fileNumber, ushort recordNumber, ushort recordLength)
     {
         var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
         {
             writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
+            writer.Write(ConvertUshort(address));
             writer.Write((byte)0x07);
             writer.Write((byte)0x06);           // Reference type
 
