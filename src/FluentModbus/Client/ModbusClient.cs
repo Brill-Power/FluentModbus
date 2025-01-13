@@ -468,32 +468,42 @@ public abstract partial class ModbusClient
         });
     }
 
+    private void WriteReadFileRecordRequest(List<ModbusFileRecord> fileRecords, ExtendedBinaryWriter writer)
+    {
+        writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
+        writer.Write((byte)(fileRecords.Count * 7));
+        foreach (ModbusFileRecord record in fileRecords)
+        {
+            writer.Write((byte)0x06);
+            if (BitConverter.IsLittleEndian)
+            {
+                writer.WriteReverse(record.FileNumber);
+                writer.WriteReverse(record.RecordNumber);
+                writer.WriteReverse(record.RecordLength);
+            }
+            else
+            {
+                writer.Write(record.FileNumber);
+                writer.Write(record.RecordNumber);
+                writer.Write(record.RecordLength);
+            }
+        }
+    }
+
     /// <summary>
-    /// This methdod is not implemented.
+    /// Reads a file record.
+    /// </summary>
+    public Span<byte> ReadFileRecord(byte unitIdentifier, List<ModbusFileRecord> fileRecords)
+    {
+        return TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer => WriteReadFileRecordRequest(fileRecords, writer));
+    }
+
+    /// <summary>
+    /// Reads a file record asynchronously.
     /// </summary> 
     public async Task<Memory<byte>> ReadFileRecordAsync(byte unitIdentifier, List<ModbusFileRecord> fileRecords)
     {
-        return await TransceiveFrameAsync(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
-        {
-            writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
-            writer.Write((byte)(fileRecords.Count * 7));
-            foreach (var record in fileRecords)
-            {
-                writer.Write((byte)0x06);
-                if (BitConverter.IsLittleEndian)
-                {
-                    writer.WriteReverse(record.FileNumber);
-                    writer.WriteReverse(record.RecordNumber);
-                    writer.WriteReverse(record.RecordLength);
-                }
-                else
-                {
-                    writer.Write(record.FileNumber);
-                    writer.Write(record.RecordNumber);
-                    writer.Write(record.RecordLength);
-                }
-            }
-        });
+        return await TransceiveFrameAsync(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer => WriteReadFileRecordRequest(fileRecords, writer));
     }
 
     /// <summary>
