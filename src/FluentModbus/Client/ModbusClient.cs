@@ -471,28 +471,29 @@ public abstract partial class ModbusClient
     /// <summary>
     /// This methdod is not implemented.
     /// </summary> 
-    public Span<byte> ReadFileRecord(byte unitIdentifier, int address, ushort fileNumber, ushort recordNumber, ushort recordLength)
+    public async Task<Memory<byte>> ReadFileRecordAsync(byte unitIdentifier, List<ModbusFileRecord> fileRecords)
     {
-        var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
+        return await TransceiveFrameAsync(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer =>
         {
             writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
-            writer.Write((byte)0x07);
-            writer.Write((byte)0x06);
-            if (BitConverter.IsLittleEndian)
+            writer.Write((byte)(fileRecords.Count * 7));
+            foreach (var record in fileRecords)
             {
-                writer.WriteReverse(fileNumber);
-                writer.WriteReverse(recordNumber);
-                writer.WriteReverse(recordLength);
+                writer.Write((byte)0x06);
+                if (BitConverter.IsLittleEndian)
+                {
+                    writer.WriteReverse(record.FileNumber);
+                    writer.WriteReverse(record.RecordNumber);
+                    writer.WriteReverse(record.RecordLength);
+                }
+                else
+                {
+                    writer.Write(record.FileNumber);
+                    writer.Write(record.RecordNumber);
+                    writer.Write(record.RecordLength);
+                }
             }
-            else
-            {
-                writer.Write(fileNumber);
-                writer.Write(recordNumber);
-                writer.Write(recordLength);
-            }
-
         });
-        return buffer.Slice(2);
     }
 
     /// <summary>
