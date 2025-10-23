@@ -14,7 +14,7 @@ public abstract partial class ModbusClient
     /// Gets the connection status of the underlying client.
     /// </summary>
     public abstract bool IsConnected { get; }
-    
+
     protected private bool SwapBytes { get; set; }
 
     #endregion
@@ -147,7 +147,7 @@ public abstract partial class ModbusClient
         var buffer = TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadHoldingRegisters, writer =>
         {
             writer.Write((byte)ModbusFunctionCode.ReadHoldingRegisters);              // 07     Function Code
-            
+
             if (BitConverter.IsLittleEndian)
             {
                 writer.WriteReverse(startingAddress);                                 // 08-09  Starting Address
@@ -383,7 +383,7 @@ public abstract partial class ModbusClient
         if (SwapBytes)
             value = ModbusUtils.SwitchEndianness(value);
 
-        WriteSingleRegister(unitIdentifier_converted, registerAddress_converted, MemoryMarshal.Cast<short, byte>(new [] { value }).ToArray());
+        WriteSingleRegister(unitIdentifier_converted, registerAddress_converted, MemoryMarshal.Cast<short, byte>(new[] { value }).ToArray());
     }
 
     /// <summary>
@@ -468,13 +468,42 @@ public abstract partial class ModbusClient
         });
     }
 
-    /// <summary>
-    /// This methdod is not implemented.
-    /// </summary>
-    [Obsolete("This method is not implemented.")]
-    public void ReadFileRecord()
+    private void WriteReadFileRecordRequest(List<ModbusFileRecord> fileRecords, ExtendedBinaryWriter writer)
     {
-        throw new NotImplementedException();
+        writer.Write((byte)ModbusFunctionCode.ReadFileRecord);  // 0x14 (20)
+        writer.Write((byte)(fileRecords.Count * 7));
+        foreach (ModbusFileRecord record in fileRecords)
+        {
+            writer.Write((byte)0x06);
+            if (BitConverter.IsLittleEndian)
+            {
+                writer.WriteReverse(record.FileNumber);
+                writer.WriteReverse(record.RecordNumber);
+                writer.WriteReverse(record.RecordLength);
+            }
+            else
+            {
+                writer.Write(record.FileNumber);
+                writer.Write(record.RecordNumber);
+                writer.Write(record.RecordLength);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads a file record.
+    /// </summary>
+    public Span<byte> ReadFileRecord(byte unitIdentifier, List<ModbusFileRecord> fileRecords)
+    {
+        return TransceiveFrame(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer => WriteReadFileRecordRequest(fileRecords, writer));
+    }
+
+    /// <summary>
+    /// Reads a file record asynchronously.
+    /// </summary> 
+    public async Task<Memory<byte>> ReadFileRecordAsync(byte unitIdentifier, List<ModbusFileRecord> fileRecords)
+    {
+        return await TransceiveFrameAsync(unitIdentifier, ModbusFunctionCode.ReadFileRecord, writer => WriteReadFileRecordRequest(fileRecords, writer));
     }
 
     /// <summary>
@@ -560,7 +589,7 @@ public abstract partial class ModbusClient
                 writer.Write(writeStartingAddress);                                 // 12-13  Read Starting Address
                 writer.Write((ushort)writeQuantity);                                // 14-15  Quantity to Write
             }
-            
+
             writer.Write((byte)(writeQuantity * 2));                                // 16     Byte Count = Quantity to Write * 2
 
             writer.Write(dataset, 0, dataset.Length);
