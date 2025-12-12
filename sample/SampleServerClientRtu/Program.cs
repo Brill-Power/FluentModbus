@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace FluentModbus.SampleMaster;
+namespace BrillPower.FluentModbus.SampleMaster;
 
 class Program
 {

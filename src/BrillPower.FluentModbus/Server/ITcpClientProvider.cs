@@ -1,0 +1,15 @@
+using System.Net.Sockets;
+
+namespace BrillPower.FluentModbus;
+
+/// <summary>
+/// Provides TCP clients.
+/// </summary>
+public interface ITcpClientProvider : IDisposable
+{
+    /// <summary>
+    /// Accepts the next TCP client.
+    /// </summary>
+    /// <returns></returns>
+    Task<TcpClient> AcceptTcpClientAsync();
+}
