@@ -219,6 +219,43 @@ public abstract partial class ModbusClient
         });
     }
 
+#if NETSTANDARD2_1_OR_GREATER
+    /// <summary>
+    /// Low level API. Use the generic version of this method for easier access. Writes the provided byte array to the holding registers.
+    /// </summary>
+    /// <param name="unitIdentifier">The unit identifier is used to communicate via devices such as bridges, routers and gateways that use a single IP address to support multiple independent Modbus end units. Thus, the unit identifier is the address of a remote slave connected on a serial line or on other buses. Use the default values 0x00 or 0xFF when communicating to a Modbus server that is directly connected to a TCP/IP network.</param>
+    /// <param name="startingAddress">The holding register start address for the write operation.</param>
+    /// <param name="dataset">The byte array to write to the server. A minimum of two bytes is required.</param>
+    public void WriteMultipleRegisters(byte unitIdentifier, ushort startingAddress, Memory<byte> dataset)
+    {
+        if (dataset.Length < 2 || dataset.Length % 2 != 0)
+            throw new ArgumentOutOfRangeException(ErrorMessage.ModbusClient_ArrayLengthMustBeGreaterThanTwoAndEven);
+
+        var quantity = dataset.Length / 2;
+
+        TransceiveFrame(unitIdentifier, ModbusFunctionCode.WriteMultipleRegisters, writer =>
+        {
+            writer.Write((byte)ModbusFunctionCode.WriteMultipleRegisters);            // 07     Function Code
+
+            if (BitConverter.IsLittleEndian)
+            {
+                writer.WriteReverse(startingAddress);                                 // 08-09  Starting Address
+                writer.WriteReverse((ushort)quantity);                                // 10-11  Quantity of Registers
+            }
+
+            else
+            {
+                writer.Write(startingAddress);                                        // 08-09  Starting Address
+                writer.Write((ushort)quantity);                                       // 10-11  Quantity of Registers
+            }
+
+            writer.Write((byte)(quantity * 2));                                       // 12     Byte Count = Quantity of Registers * 2
+
+            writer.Write(dataset.Span);
+        });
+    }
+#endif // NETSTANDARD2_1_OR_GREATER
+
     // class 1
 
     /// <summary>
