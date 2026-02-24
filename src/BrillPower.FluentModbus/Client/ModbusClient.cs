@@ -219,7 +219,7 @@ public abstract partial class ModbusClient
         });
     }
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET8_0_OR_GREATER
     /// <summary>
     /// Low level API. Use the generic version of this method for easier access. Writes the provided byte array to the holding registers.
     /// </summary>
