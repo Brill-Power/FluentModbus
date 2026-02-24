@@ -186,6 +186,56 @@ public partial class ModbusTcpClient : ModbusClient, IDisposable
         }
     }
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Connect to the specified <paramref name="remoteEndpoint"/>.
+    /// </summary>
+    /// <param name="remoteEndpoint">The IP address and port of the end unit.</param>
+    /// <param name="endianness">Specifies the endianness of the data exchanged with the Modbus server.</param>
+    public async ValueTask ConnectAsync(IPEndPoint remoteEndpoint, ModbusEndianness endianness)
+    {
+        await InitializeAsync(new TcpClient(), remoteEndpoint, endianness);
+    }
+
+    private async ValueTask InitializeAsync(TcpClient tcpClient, IPEndPoint? remoteEndpoint, ModbusEndianness endianness)
+    {
+        SwapBytes = BitConverter.IsLittleEndian && endianness == ModbusEndianness.BigEndian ||
+                        !BitConverter.IsLittleEndian && endianness == ModbusEndianness.LittleEndian;
+
+        _frameBuffer = new ModbusFrameBuffer(size: 260);
+
+        if (_tcpClient.HasValue && _tcpClient.Value.IsInternal)
+        {
+            _tcpClient.Value.Value.Close();
+        }
+
+        bool isInternal = remoteEndpoint is not null;
+        _tcpClient = (tcpClient, isInternal);
+
+        if (remoteEndpoint is not null)
+        {
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.CancelAfter(ConnectTimeout);
+            await tcpClient.ConnectAsync(remoteEndpoint.Address, remoteEndpoint.Port, cancellationTokenSource.Token);
+        }
+
+        // Why no method signature with NetworkStream only and then set the timeouts
+        // in the Connect method like for the RTU client?
+        //
+        // "If a NetworkStream was associated with a TcpClient, the Close method will
+        //  close the TCP connection, but not dispose of the associated TcpClient."
+        // -> https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.networkstream.close?view=net-6.0
+
+        _networkStream = tcpClient.GetStream();
+
+        if (isInternal)
+        {
+            _networkStream.ReadTimeout = ReadTimeout;
+            _networkStream.WriteTimeout = WriteTimeout;
+        }
+    }
+#endif // NET8_0_OR_GREATER
+
     /// <summary>
     /// Disconnect from the end unit.
     /// </summary>
